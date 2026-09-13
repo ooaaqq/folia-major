@@ -4,10 +4,12 @@ import { motionValue, type MotionValue } from 'framer-motion';
 import '@/index.css';
 import './modExportPage.css';
 import { DEFAULT_THEME } from '@/services/baseThemes';
-import { getVisualizerRegistryEntry, hasVisualizerMode } from '@/components/visualizer/registry';
-import { applyVisualizerTuning, type VisualizerTuningBundle } from '@/components/visualizer/tuningRegistry';
+import { hasVisualizerMode } from '@/components/visualizer/registry';
+import { type VisualizerTuningBundle } from '@/components/visualizer/tuningRegistry';
 import { registerModVisualizers, type ModVisualizerDescriptor } from '../modVisualizers';
-import type { AudioBands, Line, Theme, VisualizerMode } from '@/types';
+import type { AudioBands, Line, MonetPortraitImage, SubtitleContentMode, Theme, VisualizerMode } from '@/types';
+import type { VisualizerBackgroundConfig } from '@/components/visualizer/backgrounds/definition';
+import VisualizerRenderer from '@/components/visualizer/VisualizerRenderer';
 
 // src/mods/export/modExportPage.tsx
 // Standalone hidden renderer for mod video export. It drives a chosen
@@ -20,7 +22,17 @@ interface ExportPageConfig {
     visualizerMode: string;
     visualizerTunings?: VisualizerTuningBundle | null;
     theme: Theme | null;
-    songMeta: { title?: string; artist?: string } | null;
+    songMeta: { title?: string; artist?: string; album?: string } | null;
+    coverUrl?: string | null;
+    background?: VisualizerBackgroundConfig | null;
+    monetPortraitImage?: MonetPortraitImage | null;
+    isDaylight?: boolean;
+    subtitleFontScale?: number;
+    showSubtitleTranslation?: boolean;
+    subtitleContentMode?: SubtitleContentMode;
+    showHarmonySubtitle?: boolean;
+    harmonySubtitleBackground?: boolean;
+    seed?: string | number;
     startSec?: number;
     backgroundMode?: 'none' | 'theme';
     transparent?: boolean;
@@ -107,6 +119,10 @@ const ModExportPage: React.FC = () => {
         linesRef.current = nextConfig.lyricData?.lines ?? [];
         setConfig(nextConfig);
         applyLineIndex(Number(nextConfig.startSec ?? 0));
+        await Promise.resolve(document.fonts?.ready).catch(() => undefined);
+        // Let React mount, image decoders finish and Monet's debounced bitmap pipeline fade in.
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 1400));
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
     }, [applyLineIndex]);
 
     const frameApiRef = useRef({ renderFrame, configure });
@@ -126,7 +142,6 @@ const ModExportPage: React.FC = () => {
 
     const mode = config?.visualizerMode ?? 'classic';
     const effectiveMode: VisualizerMode = hasVisualizerMode(mode) ? mode : 'classic';
-    const entry = getVisualizerRegistryEntry(effectiveMode);
     const lines = config?.lyricData?.lines ?? [];
     const theme = config?.theme ?? DEFAULT_THEME;
     // 'theme' fills the container with the song theme background color for an
@@ -139,7 +154,17 @@ const ModExportPage: React.FC = () => {
     // Reuse the song's live visualizer tuning so the exported clip reproduces
     // the on-screen animation instead of falling back to per-mode defaults.
     // `applyVisualizerTuning` mirrors what VisualizerRenderer does in-app.
-    const resolvedVisualizerProps = applyVisualizerTuning(effectiveMode, {
+    const resolvedBackground = config?.backgroundMode === 'none'
+        ? {
+            transparent: true,
+            common: { disableGeometricBackground: true, disableVignette: true },
+        }
+        : {
+            ...(config?.background ?? {}),
+            transparent: false,
+        };
+
+    const visualizerProps = {
         currentTime: currentTimeRef.current,
         currentLineIndex,
         lines,
@@ -149,21 +174,23 @@ const ModExportPage: React.FC = () => {
         showText: true,
         songTitle: config?.songMeta?.title ?? null,
         songArtist: config?.songMeta?.artist ?? null,
+        songAlbum: config?.songMeta?.album ?? null,
+        coverUrl: config?.coverUrl ?? null,
+        monetPortraitImage: config?.monetPortraitImage ?? null,
+        isDaylight: config?.isDaylight ?? false,
+        subtitleFontScale: config?.subtitleFontScale,
+        showSubtitleTranslation: config?.showSubtitleTranslation,
+        subtitleContentMode: config?.subtitleContentMode,
+        showHarmonySubtitle: config?.showHarmonySubtitle,
+        harmonySubtitleBackground: config?.harmonySubtitleBackground,
+        seed: config?.seed,
+        staticMode: false,
+        backgroundStaticMode: true,
         paused: false,
         visualizerOpacity: 1,
-        // 'theme' mode keeps the default background renderer; 'none'
-        // must pass transparent so the shell does not paint the
-        // default opaque theme gradient into the captured frames.
-        // `common.disableGeometricBackground` also kills the geometric
-        // layer baked into some modes (e.g. fume) that reads the same
-        // flag directly instead of going through the shell renderer.
-        background: config?.backgroundMode === 'theme'
-            ? undefined
-            : {
-                transparent: true,
-                common: { disableGeometricBackground: true, disableVignette: true },
-            },
-    }, config?.visualizerTunings ?? undefined);
+        background: resolvedBackground,
+        visualizerTunings: config?.visualizerTunings ?? undefined,
+    };
 
     return (
         <div
@@ -171,7 +198,9 @@ const ModExportPage: React.FC = () => {
             style={{ backgroundColor: containerBackground }}
         >
             {config ? (
-                <Suspense fallback={null}>{entry.render(resolvedVisualizerProps)}</Suspense>
+                <Suspense fallback={null}>
+                    <VisualizerRenderer mode={effectiveMode} {...visualizerProps} />
+                </Suspense>
             ) : (
                 <div />
             )}

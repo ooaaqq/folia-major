@@ -1,0 +1,11 @@
+{
+  "id": "monet-video-export",
+  "name": "莫奈无声视频导出",
+  "version": "0.2.0",
+  "apiVersion": 1,
+  "author": "ooaaqq local fork",
+  "description": "将当前本地歌曲离屏渲染为带封面、专辑名和莫奈背景的无声视频。",
+  "entry": "index.cjs",
+  "depends": [],
+  "permissions": ["render.export", "runtime.playback"]
+}

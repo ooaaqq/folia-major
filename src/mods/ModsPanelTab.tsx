@@ -13,6 +13,12 @@ import { useModsStore } from './useModsStore';
 import { useVisualizerSettingsStore } from '../stores/useVisualizerSettingsStore';
 import { useLyricSettingsStore } from '../stores/useLyricSettingsStore';
 import { useThemeSettingsStore } from '../stores/useThemeSettingsStore';
+import { useTypographySettingsStore } from '../stores/useTypographySettingsStore';
+import { useVisualizerAssetStore } from '../stores/useVisualizerAssetStore';
+import { selectDisplayCoverUrl, usePlaybackStore } from '../stores/usePlaybackStore';
+import { useVisualizerBackgroundConfig } from '../components/visualizer/useVisualizerBackgroundConfig';
+import { getSongAlbumLabel, getSongArtistLabel } from '../services/onlineMusic/songMetadata';
+import { resolveObsBrowserSourceCoverUrl, resolveObsBrowserSourceImageAsset } from '../utils/obsBrowserSource';
 
 // src/mods/ModsPanelTab.tsx
 // The mod manager surface rendered as a single-column accordion: each mod
@@ -222,6 +228,16 @@ const ModsPanelTab: React.FC<ModsPanelTabProps> = ({
     })));
     const globalLyricTimelineOffsetMs = useLyricSettingsStore((state) => state.globalLyricTimelineOffsetMs);
     const isDaylight = useThemeSettingsStore(state => state.isDaylight);
+    const displayCoverUrl = usePlaybackStore(selectDisplayCoverUrl);
+    const background = useVisualizerBackgroundConfig();
+    const monetPortraitImage = useVisualizerAssetStore(state => state.monetPortraitImage);
+    const typography = useTypographySettingsStore(useShallow(state => ({
+        subtitleFontScale: state.subtitleFontScale,
+        showSubtitleTranslation: state.showSubtitleTranslation,
+        subtitleContentMode: state.subtitleContentMode,
+        showHarmonySubtitle: state.showHarmonySubtitle,
+        harmonySubtitleBackground: state.harmonySubtitleBackground,
+    })));
 
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -352,17 +368,59 @@ const ModsPanelTab: React.FC<ModsPanelTabProps> = ({
         if (!bridgeAvailable) {
             return;
         }
-        void pushRuntimeSnapshot({
-            song: currentSong,
-            songTitle: currentSong?.name ?? null,
-            songArtist: currentSong?.artists?.[0]?.name ?? null,
-            lyricData: activeLyrics,
-            theme,
-            visualizerMode,
-            visualizerTunings,
-            lyricTimelineOffsetMs,
+        let cancelled = false;
+
+        void Promise.all([
+            resolveObsBrowserSourceCoverUrl(displayCoverUrl ?? null).catch(() => null),
+            background.customImage
+                ? resolveObsBrowserSourceImageAsset(background.customImage).catch(() => null)
+                : Promise.resolve(null),
+            monetPortraitImage
+                ? resolveObsBrowserSourceImageAsset(monetPortraitImage).catch(() => null)
+                : Promise.resolve(null),
+        ]).then(([coverUrl, customImage, resolvedPortraitImage]) => {
+            if (cancelled) return;
+            void pushRuntimeSnapshot({
+                song: currentSong,
+                songTitle: currentSong?.name ?? null,
+                songArtist: currentSong ? getSongArtistLabel(currentSong) || null : null,
+                songAlbum: currentSong ? getSongAlbumLabel(currentSong) || null : null,
+                coverUrl,
+                lyricData: activeLyrics,
+                theme,
+                visualizerMode,
+                visualizerTunings,
+                background: {
+                    ...background,
+                    mode: 'monet',
+                    transparent: false,
+                    customImage,
+                },
+                monetPortraitImage: resolvedPortraitImage,
+                isDaylight,
+                ...typography,
+                seed: currentSong?.id,
+                lyricTimelineOffsetMs,
+            });
         });
-    }, [bridgeAvailable, currentSong, activeLyrics, theme, visualizerMode, visualizerTunings, lyricTimelineOffsetMs]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        bridgeAvailable,
+        currentSong,
+        displayCoverUrl,
+        activeLyrics,
+        theme,
+        visualizerMode,
+        visualizerTunings,
+        background,
+        monetPortraitImage,
+        isDaylight,
+        typography,
+        lyricTimelineOffsetMs,
+    ]);
 
     return (
         <motion.div

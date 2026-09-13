@@ -1,5 +1,6 @@
-import type { LyricData, SongResult, Theme, VisualizerMode } from '@/types';
+import type { LyricData, MonetPortraitImage, SongResult, SubtitleContentMode, Theme, VisualizerMode } from '@/types';
 import type { VisualizerTuningBundle } from '@/components/visualizer/tuningRegistry';
+import type { VisualizerBackgroundConfig } from '@/components/visualizer/backgrounds/definition';
 
 // src/mods/types.ts
 // Shared contracts between the mod system renderer surfaces and the Electron
@@ -148,10 +149,21 @@ export interface ModRuntimeSnapshot {
     song: Pick<SongResult, 'id' | 'name' | 'artists' | 'album'> | null;
     songTitle?: string | null;
     songArtist?: string | null;
+    songAlbum?: string | null;
+    coverUrl?: string | null;
     lyricData: LyricData | null;
     theme: Theme | null;
     visualizerMode: VisualizerMode | null;
     /** Current visualizer tuning bundle lifted straight from the settings store, for faithful export. */
     visualizerTunings?: VisualizerTuningBundle | null;
+    background?: VisualizerBackgroundConfig | null;
+    monetPortraitImage?: MonetPortraitImage | null;
+    isDaylight?: boolean;
+    subtitleFontScale?: number;
+    showSubtitleTranslation?: boolean;
+    subtitleContentMode?: SubtitleContentMode;
+    showHarmonySubtitle?: boolean;
+    harmonySubtitleBackground?: boolean;
+    seed?: string | number;
     lyricTimelineOffsetMs?: number;
 }

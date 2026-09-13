@@ -1,22 +1,17 @@
 // mods/sample-transparent-mov-export/index.cjs
-// Sample mod: renders the currently displayed lyric animation into a MOV file
-// with an alpha channel. It reuses the song's live visualizer mode and tuning
-// verbatim — only the background is dropped — so the exported clip matches what
-// the user sees on screen. The pipeline (hidden transparent window, per-frame
-// capture, ffmpeg ProRes 4444 encoding) is provided by the loader; this mod only
-// declares the UI contract and forwards the parameters.
+// Local video tool: always renders Monet lyrics over the Monet background.
 
 'use strict';
 
 module.exports = function activate(api) {
-    api.log.info('transparent-mov-export loaded');
+    api.log.info('monet-video-export loaded');
 
     api.commands.register({
-        id: 'export-transparent-mov',
-        label: { 'zh-CN': '导出透明视频', en: 'Export transparent video' },
+        id: 'export-monet-video',
+        label: { 'zh-CN': '导出莫奈视频', en: 'Export Monet video' },
         description: {
-            'zh-CN': '按当前歌曲的动画模式与参数原样渲染，仅去除背景，导出带 Alpha 通道的透明视频（需要 ffmpeg，仅桌面端，Windows 保留完整 Alpha 通道）。',
-            en: 'Renders the current song with its live visualizer mode and tuning, drops the background, and exports a transparent video with alpha (requires ffmpeg; desktop only; full alpha on Windows).',
+            'zh-CN': '将当前本地歌曲按莫奈歌词和莫奈背景离屏渲染为无声视频，自动带入歌名、歌手、专辑与封面。',
+            en: 'Renders the current local track as a silent Monet lyrics video with its metadata and cover.',
         },
         permissions: ['render.export', 'runtime.playback'],
         params: [
@@ -24,15 +19,16 @@ module.exports = function activate(api) {
                 key: 'codec',
                 label: { 'zh-CN': '编码格式', en: 'Codec' },
                 description: {
-                    'zh-CN': 'VP9（默认）：文件小约 10 倍，WebM 容器，剪映/达芬奇较新版本可识别透明，若你的剪辑软件不吃 WebM 请换 ProRes。ProRes 4444：MOV，文件大但几乎全兼容。',
-                    en: 'VP9 (default): ~10x smaller WebM; newer CapCut/Resolve recognize alpha, else use ProRes. ProRes 4444: MOV, large but nearly universally compatible.',
+                    'zh-CN': 'H.264 输出 MP4，便于后续压入音频；VP9 输出 WebM；ProRes 输出高码率 MOV。',
+                    en: 'H.264 outputs MP4 for easy audio muxing; VP9 outputs WebM; ProRes outputs a high-bitrate MOV.',
                 },
                 type: 'select',
                 options: [
-                    { value: 'vp9', label: { 'zh-CN': 'VP9（小文件 WebM）', en: 'VP9 (small WebM)' } },
-                    { value: 'prores', label: { 'zh-CN': 'ProRes 4444（兼容 MOV）', en: 'ProRes 4444 (compatible MOV)' } },
+                    { value: 'h264', label: { 'zh-CN': 'H.264（高质量 MP4）', en: 'H.264 (high-quality MP4)' } },
+                    { value: 'vp9', label: { 'zh-CN': 'VP9（WebM）', en: 'VP9 (WebM)' } },
+                    { value: 'prores', label: { 'zh-CN': 'ProRes 4444（MOV）', en: 'ProRes 4444 (MOV)' } },
                 ],
-                defaultValue: 'vp9',
+                defaultValue: 'h264',
             },
             {
                 key: 'width',
@@ -40,7 +36,7 @@ module.exports = function activate(api) {
                 type: 'number',
                 min: 320,
                 max: 3840,
-                defaultValue: 1920,
+                defaultValue: 3840,
             },
             {
                 key: 'height',
@@ -48,7 +44,7 @@ module.exports = function activate(api) {
                 type: 'number',
                 min: 180,
                 max: 2160,
-                defaultValue: 1080,
+                defaultValue: 2160,
             },
             {
                 key: 'fps',
@@ -81,10 +77,8 @@ module.exports = function activate(api) {
                 throw new Error('export-no-lyrics');
             }
 
-            // Reuse the song's live mode + tunings so the output matches the
-            // on-screen animation; always render transparent (background dropped).
             const result = await api.render.exportVideo({
-                codec: params.codec === 'prores' ? 'prores' : 'vp9',
+                codec: ['h264', 'prores'].includes(params.codec) ? params.codec : 'vp9',
                 width: Number(params.width),
                 height: Number(params.height),
                 fps: Number(params.fps),
@@ -92,15 +86,30 @@ module.exports = function activate(api) {
                 // 0 leaves the end open; the export service falls back to the
                 // end of the lyric timeline plus a short outro.
                 endSec: Number(params.endSec) || 0,
-                visualizerMode: snapshot.visualizerMode || 'classic',
+                visualizerMode: 'monet',
                 visualizerTunings: snapshot.visualizerTunings || null,
-                backgroundMode: 'none',
-                transparent: true,
+                backgroundMode: 'theme',
+                transparent: false,
                 lyricData: snapshot.lyricData,
                 theme: snapshot.theme,
+                coverUrl: snapshot.coverUrl,
+                background: {
+                    ...(snapshot.background || {}),
+                    mode: 'monet',
+                    transparent: false,
+                },
+                monetPortraitImage: snapshot.monetPortraitImage,
+                isDaylight: snapshot.isDaylight,
+                subtitleFontScale: snapshot.subtitleFontScale,
+                showSubtitleTranslation: snapshot.showSubtitleTranslation,
+                subtitleContentMode: snapshot.subtitleContentMode,
+                showHarmonySubtitle: snapshot.showHarmonySubtitle,
+                harmonySubtitleBackground: snapshot.harmonySubtitleBackground,
+                seed: snapshot.seed,
                 songMeta: {
                     title: snapshot.songTitle ?? '',
                     artist: snapshot.songArtist ?? '',
+                    album: snapshot.songAlbum ?? snapshot.song?.album?.name ?? '',
                 },
             });
 

@@ -510,13 +510,15 @@ const createModSystem = ({ app, BrowserWindow, getMainWindow, getLocaleKey, isFe
             const modId = discovery.manifest.id;
             const digest = computeModDigest(discovery.dirPath);
             const trust = resolveTrust(modId, digest);
+            const isRepoDevMod = !app.isPackaged
+                && path.dirname(discovery.dirPath) === path.join(app.getAppPath(), 'mods');
             manifestsById.set(modId, discovery.manifest);
             prepared.set(modId, {
                 manifest: discovery.manifest,
                 dirPath: discovery.dirPath,
                 digest,
-                enabled: trust.enabled,
-                trustStale: trust.trustStale,
+                enabled: isRepoDevMod || trust.enabled,
+                trustStale: isRepoDevMod ? false : trust.trustStale,
             });
         });
 

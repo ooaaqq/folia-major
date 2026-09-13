@@ -103,13 +103,23 @@ const createExportService = ({ app, BrowserWindow, resolveFfmpeg, getModVisualiz
                 visualizerTunings: spec.visualizerTunings && typeof spec.visualizerTunings === 'object' ? spec.visualizerTunings : null,
                 theme: spec.theme && typeof spec.theme === 'object' ? spec.theme : null,
                 songMeta: spec.songMeta && typeof spec.songMeta === 'object' ? spec.songMeta : {},
+                coverUrl: typeof spec.coverUrl === 'string' ? spec.coverUrl : null,
+                background: spec.background && typeof spec.background === 'object' ? spec.background : null,
+                monetPortraitImage: spec.monetPortraitImage && typeof spec.monetPortraitImage === 'object' ? spec.monetPortraitImage : null,
+                isDaylight: spec.isDaylight === true,
+                subtitleFontScale: Number.isFinite(Number(spec.subtitleFontScale)) ? Number(spec.subtitleFontScale) : undefined,
+                showSubtitleTranslation: spec.showSubtitleTranslation !== false,
+                subtitleContentMode: ['translation', 'romanization', 'none'].includes(spec.subtitleContentMode) ? spec.subtitleContentMode : 'translation',
+                showHarmonySubtitle: spec.showHarmonySubtitle !== false,
+                harmonySubtitleBackground: spec.harmonySubtitleBackground === true,
+                seed: typeof spec.seed === 'string' || typeof spec.seed === 'number' ? spec.seed : undefined,
                 outputPath: typeof spec.outputPath === 'string' && spec.outputPath.length > 0
                     ? spec.outputPath
                     : null,
                 alphaGuaranteed,
                 backgroundMode,
                 transparent,
-                codec: spec.codec === 'prores' ? 'prores' : 'vp9',
+                codec: ['h264', 'prores'].includes(spec.codec) ? spec.codec : 'vp9',
             },
         };
     };
@@ -119,7 +129,7 @@ const createExportService = ({ app, BrowserWindow, resolveFfmpeg, getModVisualiz
         const artistPart = sanitizeFileName(songMeta && (songMeta.artist || songMeta.artists?.[0]?.name));
         const stamp = new Date().toISOString().replace(/[:.]/g, '-');
         const base = artistPart ? `${artistPart} - ${titlePart}` : titlePart;
-        const extension = codec === 'prores' ? '.mov' : '.webm';
+        const extension = codec === 'prores' ? '.mov' : codec === 'h264' ? '.mp4' : '.webm';
         return path.join(getExportDirectory(), `${base} - ${stamp}${extension}`);
     };
 
@@ -199,7 +209,9 @@ const createExportService = ({ app, BrowserWindow, resolveFfmpeg, getModVisualiz
         // is not offered.
         const encoderArgs = renderSpec.codec === 'prores'
             ? ['-c:v', 'prores_ks', '-profile:v', '4444', '-pix_fmt', 'yuva444p10le']
-            : ['-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '30', '-row-mt', '1'];
+            : renderSpec.codec === 'h264'
+                ? ['-c:v', 'libx264', '-preset', 'medium', '-crf', '16', '-pix_fmt', 'yuv420p']
+                : ['-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '30', '-row-mt', '1'];
         const ffmpegArgs = [
             '-hide_banner', '-loglevel', 'error',
             '-y',
@@ -299,6 +311,16 @@ const createExportService = ({ app, BrowserWindow, resolveFfmpeg, getModVisualiz
                 visualizerTunings: renderSpec.visualizerTunings,
                 theme: renderSpec.theme,
                 songMeta: renderSpec.songMeta,
+                coverUrl: renderSpec.coverUrl,
+                background: renderSpec.background,
+                monetPortraitImage: renderSpec.monetPortraitImage,
+                isDaylight: renderSpec.isDaylight,
+                subtitleFontScale: renderSpec.subtitleFontScale,
+                showSubtitleTranslation: renderSpec.showSubtitleTranslation,
+                subtitleContentMode: renderSpec.subtitleContentMode,
+                showHarmonySubtitle: renderSpec.showHarmonySubtitle,
+                harmonySubtitleBackground: renderSpec.harmonySubtitleBackground,
+                seed: renderSpec.seed,
                 startSec: renderSpec.startSec,
                 backgroundMode: renderSpec.backgroundMode,
                 transparent: renderSpec.transparent,
