@@ -15,7 +15,7 @@ import { useLyricSettingsStore } from '../stores/useLyricSettingsStore';
 import { useThemeSettingsStore } from '../stores/useThemeSettingsStore';
 import { useTypographySettingsStore } from '../stores/useTypographySettingsStore';
 import { useVisualizerAssetStore } from '../stores/useVisualizerAssetStore';
-import { selectDisplayCoverUrl, usePlaybackStore } from '../stores/usePlaybackStore';
+import { selectDisplayCoverUrl, selectDisplayDuration, usePlaybackStore } from '../stores/usePlaybackStore';
 import { useVisualizerBackgroundConfig } from '../components/visualizer/useVisualizerBackgroundConfig';
 import { getSongAlbumLabel, getSongArtistLabel } from '../services/onlineMusic/songMetadata';
 import { resolveObsBrowserSourceCoverUrl, resolveObsBrowserSourceImageAsset } from '../utils/obsBrowserSource';
@@ -229,6 +229,7 @@ const ModsPanelTab: React.FC<ModsPanelTabProps> = ({
     const globalLyricTimelineOffsetMs = useLyricSettingsStore((state) => state.globalLyricTimelineOffsetMs);
     const isDaylight = useThemeSettingsStore(state => state.isDaylight);
     const displayCoverUrl = usePlaybackStore(selectDisplayCoverUrl);
+    const displayDuration = usePlaybackStore(selectDisplayDuration);
     const background = useVisualizerBackgroundConfig();
     const monetPortraitImage = useVisualizerAssetStore(state => state.monetPortraitImage);
     const typography = useTypographySettingsStore(useShallow(state => ({
@@ -386,6 +387,7 @@ const ModsPanelTab: React.FC<ModsPanelTabProps> = ({
                 songArtist: currentSong ? getSongArtistLabel(currentSong) || null : null,
                 songAlbum: currentSong ? getSongAlbumLabel(currentSong) || null : null,
                 coverUrl,
+                durationSec: displayDuration,
                 lyricData: activeLyrics,
                 theme,
                 visualizerMode,
@@ -411,6 +413,7 @@ const ModsPanelTab: React.FC<ModsPanelTabProps> = ({
         bridgeAvailable,
         currentSong,
         displayCoverUrl,
+        displayDuration,
         activeLyrics,
         theme,
         visualizerMode,

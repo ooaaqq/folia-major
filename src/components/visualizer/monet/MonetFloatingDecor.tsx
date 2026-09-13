@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type MotionValue, useTransform } from 'framer-motion';
 import type { Theme } from '../../../types';
 import { colorWithAlpha } from '../colorMix';
 import { resolveLucideIcon } from '../../../utils/lucideIconResolver';
+import { sampleVideoTimeLoop } from './videoTimeMotion';
 
 // src/components/visualizer/monet/MonetFloatingDecor.tsx
 // Renders gentle floating decorative particles for the Monet visualizer.
@@ -40,9 +41,39 @@ interface FloatingParticle {
 interface MonetFloatingDecorProps {
     theme: Theme;
     staticMode?: boolean;
+    currentTime?: MotionValue<number>;
+    deterministicMotion?: boolean;
 }
 
 const PARTICLE_COUNT = 10;
+
+interface TimedParticleProps {
+    particle: FloatingParticle;
+    currentTime: MotionValue<number>;
+    children: React.ReactNode;
+}
+
+const TimedParticle: React.FC<TimedParticleProps> = ({ particle: p, currentTime, children }) => {
+    const yValues = p.reverse ? [-40, 60, -20, 40, -40] : [40, -60, 20, -40, 40];
+    const xValues = p.reverse ? [15, -25, 10, -20, 15] : [-15, 25, -10, 20, -15];
+    const turn = p.reverse ? -1 : 1;
+    const rotationValues = [p.rotation, p.rotation + turn * 120, p.rotation + turn * 60, p.rotation + turn * 180, p.rotation];
+    const opacityValues = [p.opacity * 0.6, p.opacity * 1.2, p.opacity, p.opacity * 1.3, p.opacity * 0.7];
+    const sample = (values: number[], seconds: number) => sampleVideoTimeLoop(values, seconds, p.duration, p.delay);
+    const x = useTransform(currentTime, seconds => sample(xValues, seconds));
+    const y = useTransform(currentTime, seconds => sample(yValues, seconds));
+    const rotate = useTransform(currentTime, seconds => sample(rotationValues, seconds));
+    const opacity = useTransform(currentTime, seconds => sample(opacityValues, seconds));
+
+    return (
+        <motion.div
+            className="absolute"
+            style={{ left: `${p.x}%`, top: `${p.y}%`, x, y, rotate, opacity }}
+        >
+            {children}
+        </motion.div>
+    );
+};
 
 /** Generates a stable set of floating particles seeded by the available icon list. */
 const buildParticles = (availableIcons: string[]): FloatingParticle[] =>
@@ -67,6 +98,8 @@ const buildParticles = (availableIcons: string[]): FloatingParticle[] =>
 const MonetFloatingDecor: React.FC<MonetFloatingDecorProps> = ({
     theme,
     staticMode = false,
+    currentTime,
+    deterministicMotion = false,
 }) => {
     const availableIcons = theme.lyricsIcons ?? [];
 
@@ -103,6 +136,18 @@ const MonetFloatingDecor: React.FC<MonetFloatingDecorProps> = ({
                     >
                         {renderParticleContent(p)}
                     </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (deterministicMotion && currentTime) {
+        return (
+            <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+                {particles.map(p => (
+                    <TimedParticle key={p.id} particle={p} currentTime={currentTime}>
+                        {renderParticleContent(p)}
+                    </TimedParticle>
                 ))}
             </div>
         );

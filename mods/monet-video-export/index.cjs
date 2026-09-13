@@ -64,8 +64,8 @@ module.exports = function activate(api) {
             },
             {
                 key: 'endSec',
-                label: { 'zh-CN': '结束时间（秒，0 = 歌词结束）', en: 'End time (sec, 0 = lyric end)' },
-                description: { 'zh-CN': '0 表示自动渲染到歌词结束。', en: '0 renders until the lyrics finish.' },
+                label: { 'zh-CN': '结束时间（秒，0 = 歌曲结束）', en: 'End time (sec, 0 = song end)' },
+                description: { 'zh-CN': '0 表示自动渲染完整首歌曲时长。', en: '0 renders the full song duration.' },
                 type: 'number',
                 min: 0,
                 defaultValue: 0,
@@ -83,9 +83,10 @@ module.exports = function activate(api) {
                 height: Number(params.height),
                 fps: Number(params.fps),
                 startSec: Number(params.startSec) || 0,
-                // 0 leaves the end open; the export service falls back to the
-                // end of the lyric timeline plus a short outro.
+                // 0 leaves the end open; the export service uses the player
+                // duration, with lyric end only as a fallback.
                 endSec: Number(params.endSec) || 0,
+                durationSec: Number(snapshot.durationSec) || 0,
                 visualizerMode: 'monet',
                 visualizerTunings: snapshot.visualizerTunings || null,
                 backgroundMode: 'theme',

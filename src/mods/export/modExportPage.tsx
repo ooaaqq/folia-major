@@ -117,6 +117,7 @@ const ModExportPage: React.FC = () => {
             await registerModVisualizers(nextConfig.modVisualizers);
         }
         linesRef.current = nextConfig.lyricData?.lines ?? [];
+        currentTimeRef.current.set(Number(nextConfig.startSec ?? 0));
         setConfig(nextConfig);
         applyLineIndex(Number(nextConfig.startSec ?? 0));
         await Promise.resolve(document.fonts?.ready).catch(() => undefined);
@@ -185,7 +186,8 @@ const ModExportPage: React.FC = () => {
         harmonySubtitleBackground: config?.harmonySubtitleBackground,
         seed: config?.seed,
         staticMode: false,
-        backgroundStaticMode: true,
+        backgroundStaticMode: false,
+        deterministicMotion: true,
         paused: false,
         visualizerOpacity: 1,
         background: resolvedBackground,

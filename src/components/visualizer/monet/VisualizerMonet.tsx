@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { motion, useMotionValueEvent, useDragControls, useMotionValue } from 'framer-motion';
+import { motion, useMotionValueEvent, useDragControls, useMotionValue, useTransform } from 'framer-motion';
 import { RotateCcw } from 'lucide-react';
 import { useElementWidth } from '../../../hooks/useElementWidth';
 import { DEFAULT_MONET_TUNING } from '../../../types';
@@ -15,6 +15,7 @@ import AudioOverlay from './AudioOverlay';
 import MonetFloatingDecor from './MonetFloatingDecor';
 import MonetLyricsRail from './MonetLyricsRail';
 import MonetPortraitImage from './MonetPortraitImage';
+import { sampleVideoTimeLoop } from './videoTimeMotion';
 import {
     MONET_PORTRAIT_BASE_MAX_PX,
     MONET_PORTRAIT_INNER_BASE_MAX_PX,
@@ -49,6 +50,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
         songAlbum,
         coverUrl,
         staticMode = false,
+        deterministicMotion = false,
         isPreviewMode = false,
         monetTuning = DEFAULT_MONET_TUNING,
         monetPortraitImage = null,
@@ -75,6 +77,15 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
     const [isHangerHovered, setIsHangerHovered] = useState(false);
     const initialOffsetX = monetTuning.portraitOffsetX ?? 0;
     const offsetX = useMotionValue(initialOffsetX);
+    const timedPortraitX = useTransform(currentTime, seconds => (
+        sampleVideoTimeLoop([0, -9, 0, 9, 0], seconds, 9, 0.2)
+    ));
+    const timedPortraitY = useTransform(currentTime, seconds => (
+        sampleVideoTimeLoop([0, -18, 0, 18, 0], seconds, 9, 0.2)
+    ));
+    const timedPortraitRotate = useTransform(currentTime, seconds => (
+        sampleVideoTimeLoop([0, 1.2, 0, -1.2, 0], seconds, 9, 0.2)
+    ));
 
     useEffect(() => {
         offsetX.set(initialOffsetX);
@@ -187,11 +198,16 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
             {showText && (
                 <motion.div
                     key={`decor-${introKey}`}
-                    initial={{ opacity: 0 }}
+                    initial={deterministicMotion ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 2.2, ease: 'easeOut' }}
                 >
-                    <MonetFloatingDecor theme={theme} staticMode={staticMode} />
+                    <MonetFloatingDecor
+                        theme={theme}
+                        staticMode={staticMode}
+                        currentTime={currentTime}
+                        deterministicMotion={deterministicMotion}
+                    />
                 </motion.div>
             )}
 
@@ -205,7 +221,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                             <div className="mb-3 space-y-1.5" style={{ maxWidth: headerMaxWidth }}>
                                 <motion.div
                                     key={`artist-${introKey}`}
-                                    initial={{ opacity: 0, x: -30, y: -10 }}
+                                    initial={deterministicMotion ? false : { opacity: 0, x: -30, y: -10 }}
                                     animate={{ opacity: 1, x: 0, y: 0 }}
                                     transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1], delay: 0.15 }}
                                     className="truncate italic"
@@ -219,7 +235,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                                 </motion.div>
                                 <motion.div
                                     key={`line-${introKey}`}
-                                    initial={{ scaleY: 0 }}
+                                    initial={deterministicMotion ? false : { scaleY: 0 }}
                                     animate={{ scaleY: 1 }}
                                     transition={{ duration: 1.5, ease: [0.25, 1, 0.5, 1], delay: 0.5 }}
                                     className="h-14 w-px rounded-full"
@@ -232,7 +248,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
 
                             <motion.div
                                 key={`title-${introKey}`}
-                                initial={{ opacity: 0, x: -40 }}
+                                initial={deterministicMotion ? false : { opacity: 0, x: -40 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 1.3, ease: [0.25, 1, 0.5, 1], delay: 0.3 }}
                                 style={{ maxWidth: headerMaxWidth }}
@@ -272,7 +288,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
 
                             <motion.div
                                 key={`rail-${introKey}`}
-                                initial={{ opacity: 0, y: 20 }}
+                                initial={deterministicMotion ? false : { opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1], delay: 0.65 }}
                             >
@@ -296,13 +312,14 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                                     onLyricLineSeek={onLyricLineSeek}
                                     seekDisabled={isPreviewMode}
                                     layoutScale={largeScreenScale}
+                                    deterministicMotion={deterministicMotion}
                                 />
                             </motion.div>
 
                             {monetTuning.showDescription && (
                                 <motion.div
                                     key={`desc-${introKey}`}
-                                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                    initial={deterministicMotion ? false : { opacity: 0, scale: 0.9, y: 10 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     transition={{ duration: 1.0, ease: [0.25, 1, 0.5, 1], delay: 0.95 }}
                                     className="mt-auto pt-4"
@@ -331,7 +348,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                             // MonetPortraitImage hands the cover over inside it instead, so the
                             // handover is continuous whether the change came from a skip or from
                             // the settle of an AutoMix/Crossfade blend.
-                            initial={{ opacity: 0, x: 50, scale: 0.95, rotate: 1 }}
+                            initial={deterministicMotion ? false : { opacity: 0, x: 50, scale: 0.95, rotate: 1 }}
                             animate={{ opacity: 1, x: 0, scale: 1, rotate: 0 }}
                             transition={{ duration: 1.6, ease: [0.25, 1, 0.5, 1], delay: 0.25 }}
                             className="hidden min-w-0 items-center justify-center overflow-visible px-3 pr-5 sm:pr-8 md:flex lg:justify-end lg:pr-10 xl:pr-12 select-none"
@@ -398,7 +415,9 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                                 >
                                     <motion.div
                                         animate={
-                                            theme.animationIntensity === 'chaotic'
+                                            deterministicMotion
+                                                ? undefined
+                                                : theme.animationIntensity === 'chaotic'
                                                 ? {
                                                       y: [0, -18, 0, 18, 0],
                                                       x: [0, -9, 0, 9, 0],
@@ -411,7 +430,9 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                                                   }
                                         }
                                         transition={
-                                            theme.animationIntensity === 'chaotic'
+                                            deterministicMotion
+                                                ? undefined
+                                                : theme.animationIntensity === 'chaotic'
                                                 ? { duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }
                                                 : { duration: 0.8, ease: 'easeOut' }
                                         }
@@ -420,7 +441,9 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
                                             width: monetTuning.portraitStyle === 'square' ? '135.135%' : '100%',
                                             marginLeft: monetTuning.portraitStyle === 'square' ? '-35.135%' : '0%',
                                             willChange: 'transform',
-                                            transform: 'translateZ(0)',
+                                            x: deterministicMotion && theme.animationIntensity === 'chaotic' ? timedPortraitX : 0,
+                                            y: deterministicMotion && theme.animationIntensity === 'chaotic' ? timedPortraitY : 0,
+                                            rotate: deterministicMotion && theme.animationIntensity === 'chaotic' ? timedPortraitRotate : 0,
                                         }}
                                     >
                                         {/* Hanger / Black-White Bar */}
@@ -522,7 +545,7 @@ const VisualizerMonet: React.FC<VisualizerMonetProps> = (props) => {
             {showText && monetTuning.showAudioVisualization && (
                 <motion.div
                     key={`audio-${introKey}`}
-                    initial={{ opacity: 0, y: 15 }}
+                    initial={deterministicMotion ? false : { opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1], delay: 0.8 }}
                     className="absolute bottom-0 left-0 z-20 h-10 overflow-hidden px-5 sm:px-8 lg:px-14"

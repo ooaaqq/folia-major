@@ -52,6 +52,8 @@ export interface VisualizerSharedProps {
     seed?: string | number;
     staticMode?: boolean;
     backgroundStaticMode?: boolean;
+    /** Drives continuous motion from currentTime for deterministic frame export. */
+    deterministicMotion?: boolean;
     visualizerOpacity?: number;
     background?: VisualizerBackgroundConfig;
     lyricsFontScale?: number;

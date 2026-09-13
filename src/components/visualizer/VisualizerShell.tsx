@@ -20,6 +20,8 @@ type VisualizerShellSharedProps = Pick<
     | 'background'
     | 'staticMode'
     | 'backgroundStaticMode'
+    | 'currentTime'
+    | 'deterministicMotion'
     | 'paused'
     | 'onBack'
     | 'isPanelOpen'
@@ -188,6 +190,8 @@ const VisualizerShell = forwardRef<HTMLDivElement, VisualizerShellProps>(({
                     seed={sharedProps?.seed}
                     staticMode={resolvedStaticMode || resolvedBackgroundStaticMode}
                     paused={resolvedPaused}
+                    currentTime={sharedProps?.currentTime}
+                    deterministicMotion={sharedProps?.deterministicMotion}
                 />
             )}
 

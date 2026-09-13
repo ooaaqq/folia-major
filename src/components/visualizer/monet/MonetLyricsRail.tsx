@@ -53,6 +53,7 @@ interface MonetLyricsRailProps {
     seekDisabled?: boolean;
     /** Shared large-screen factor. Owned by VisualizerMonet so the column and the font scale together. */
     layoutScale?: number;
+    deterministicMotion?: boolean;
 }
 
 interface MonetRailSize {
@@ -660,8 +661,9 @@ const MonetRailLine: React.FC<{
     onLineSeek?: (line: Line) => void;
     canSeek?: boolean;
     disableEntryMotion?: boolean;
+    deterministicMotion?: boolean;
     renderStaticPassed?: boolean;
-}> = ({ entry, currentTime, theme, lyricFontPx, translationFontPx, fontStack, translationFontStack, translationFontWeight, glowBufferPx, vGlowBufferPx, fontsEpoch, wordColorMatchers, showSubtitleTranslation, audioPower, onLineSeek, canSeek = false, disableEntryMotion = false, renderStaticPassed = false }) => {
+}> = ({ entry, currentTime, theme, lyricFontPx, translationFontPx, fontStack, translationFontStack, translationFontWeight, glowBufferPx, vGlowBufferPx, fontsEpoch, wordColorMatchers, showSubtitleTranslation, audioPower, onLineSeek, canSeek = false, disableEntryMotion = false, deterministicMotion = false, renderStaticPassed = false }) => {
     const initialOffset = entry.offset >= 0 ? 34 : -34;
     const exitOffset = entry.status === 'passed' || entry.offset < 0 ? -38 : 38;
     // The active lyric must never be truncated, so its box is sized by its own wrapped
@@ -703,7 +705,7 @@ const MonetRailLine: React.FC<{
                 }
             } : undefined}
             className={`absolute top-0 min-w-0 will-change-transform ${canSeek ? 'cursor-pointer' : ''}`}
-            initial={disableEntryMotion ? false : {
+            initial={disableEntryMotion || deterministicMotion ? false : {
                 opacity: 0,
                 y: entry.y + initialOffset,
                 scale: entry.tone.scale * 0.98,
@@ -715,14 +717,14 @@ const MonetRailLine: React.FC<{
                 scale: entry.tone.scale,
                 filter: `blur(${entry.tone.blurPx}px)`,
             }}
-            exit={disableEntryMotion ? undefined : {
+            exit={disableEntryMotion || deterministicMotion ? undefined : {
                 opacity: 0,
                 y: entry.y + exitOffset,
                 scale: entry.tone.scale * 0.98,
                 filter: 'blur(6px)',
                 transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
             }}
-            transition={MONET_SCROLL_TRANSITION}
+            transition={deterministicMotion ? { duration: 0 } : MONET_SCROLL_TRANSITION}
             style={{
                 left: `${glowBufferPx}px`,
                 right: `${glowBufferPx}px`,
@@ -734,12 +736,12 @@ const MonetRailLine: React.FC<{
             {entry.line.isChorus && (
                 <motion.div
                     className="absolute inset-0 pointer-events-none -z-10 rounded-2xl"
-                    initial={{ opacity: 0 }}
+                    initial={deterministicMotion ? false : { opacity: 0 }}
                     animate={{
                         opacity: entry.status === 'active' ? 1 : 0,
                         scale: entry.status === 'active' ? 1.02 : 0.96,
                     }}
-                    transition={{ duration: 0.45, ease: 'easeOut' }}
+                    transition={deterministicMotion ? { duration: 0 } : { duration: 0.45, ease: 'easeOut' }}
                     style={{
                         background: `radial-gradient(circle at 50% 45%, ${colorWithAlpha(theme.accentColor, 0.14)} 0%, ${colorWithAlpha(theme.accentColor, 0.04)} 55%, transparent 82%)`,
                         filter: 'blur(10px)',
@@ -789,9 +791,9 @@ const MonetRailLine: React.FC<{
             {showSubtitleTranslation && entry.status === 'active' && entry.line.translation ? (
                 <motion.div
                     className="min-w-0 overflow-hidden whitespace-pre-wrap break-words"
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={deterministicMotion ? false : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+                    transition={deterministicMotion ? { duration: 0 } : { duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
                     style={{
                         marginLeft: `-${glowBufferPx}px`,
                         marginRight: `-${glowBufferPx}px`,
@@ -842,6 +844,7 @@ const MonetLyricsRail: React.FC<MonetLyricsRailProps> = ({
     onLyricLineSeek,
     seekDisabled = false,
     layoutScale = 1,
+    deterministicMotion = false,
 }) => {
     const railRef = useRef<HTMLDivElement | null>(null);
     const layoutCacheRef = useRef<MonetLayoutCache>(new Map());
@@ -1094,6 +1097,7 @@ const MonetLyricsRail: React.FC<MonetLyricsRailProps> = ({
                             onLineSeek={handleLineSeek}
                             canSeek={canSeek}
                             disableEntryMotion={isManualScrolling}
+                            deterministicMotion={deterministicMotion}
                             renderStaticPassed={isManualScrolling && entry.index !== currentLineIndex}
                         />
                     ))}

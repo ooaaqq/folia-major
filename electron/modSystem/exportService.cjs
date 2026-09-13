@@ -68,9 +68,12 @@ const createExportService = ({ app, BrowserWindow, resolveFfmpeg, getModVisualiz
 
         const lyricEndSec = lines.length > 0 ? Math.max(...lines.map((line) => line.endTime)) : 0;
         const startSec = Math.max(0, Number.isFinite(Number(spec.startSec)) ? Number(spec.startSec) : 0);
-        // Default end is the lyrics end plus a 2s buffer, floored at start + 1 so
-        // a clip always has non-zero length; an explicit end later than start wins.
-        const fallbackEndSec = Math.max(startSec + 1, lyricEndSec + 2);
+        const durationSec = Number.isFinite(Number(spec.durationSec)) && Number(spec.durationSec) > 0
+            ? Number(spec.durationSec)
+            : 0;
+        // A zero end means the full player duration. Lyrics end plus a short
+        // outro remains the fallback for sources that do not report duration.
+        const fallbackEndSec = Math.max(startSec + 1, durationSec || lyricEndSec + 2);
         const requestedEndSec = (Number.isFinite(Number(spec.endSec)) && Number(spec.endSec) > startSec)
             ? Number(spec.endSec)
             : fallbackEndSec;
@@ -97,7 +100,7 @@ const createExportService = ({ app, BrowserWindow, resolveFfmpeg, getModVisualiz
             ok: errors.length === 0,
             errors,
             spec: {
-                width, height, fps, startSec, endSec,
+                width, height, fps, startSec, endSec, durationSec,
                 lyricData,
                 visualizerMode: typeof spec.visualizerMode === 'string' ? spec.visualizerMode : 'classic',
                 visualizerTunings: spec.visualizerTunings && typeof spec.visualizerTunings === 'object' ? spec.visualizerTunings : null,

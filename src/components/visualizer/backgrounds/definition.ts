@@ -82,6 +82,8 @@ export interface VisualizerBackgroundRenderProps {
     seed?: string | number;
     staticMode: boolean;
     paused: boolean;
+    currentTime?: MotionValue<number>;
+    deterministicMotion?: boolean;
 }
 
 export interface VisualizerBackgroundSettingsProps {

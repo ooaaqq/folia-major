@@ -151,6 +151,8 @@ export interface ModRuntimeSnapshot {
     songArtist?: string | null;
     songAlbum?: string | null;
     coverUrl?: string | null;
+    /** Total duration of the currently displayed track, in seconds. */
+    durationSec?: number;
     lyricData: LyricData | null;
     theme: Theme | null;
     visualizerMode: VisualizerMode | null;

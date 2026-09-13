@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import type { MotionValue } from 'framer-motion';
 import { DEFAULT_MONET_BACKGROUND_TUNING, type MonetBackgroundImage, type MonetBackgroundTuning, type Theme } from '../../../../types';
 import { colorWithAlpha } from '../../colorMix';
 import { getMonetBackgroundCacheKey, resolveMonetBackgroundDataUrl, checkCanvasFilterSupport } from '../../monet/monetBackgroundPipeline';
@@ -16,6 +17,8 @@ interface MonetBackgroundLayerProps {
     tuning?: MonetBackgroundTuning;
     transparentBackground?: boolean;
     staticMode?: boolean;
+    currentTime?: MotionValue<number>;
+    deterministicMotion?: boolean;
 }
 
 const PIPELINE_DEBOUNCE_MS = 180;
@@ -32,6 +35,8 @@ const useMonetBackgroundDrift = (
     enabled: boolean,
     strength: number,
     reducedMotion: boolean,
+    currentTime?: MotionValue<number>,
+    deterministicMotion = false,
 ) => {
     useEffect(() => {
         const element = ref.current;
@@ -48,8 +53,22 @@ const useMonetBackgroundDrift = (
             easing: 'linear',
         });
 
+        if (deterministicMotion && currentTime) {
+            animation.pause();
+            const seek = (seconds: number) => {
+                const timeMs = ((seconds * 1000) % track.durationMs + track.durationMs) % track.durationMs;
+                animation.currentTime = timeMs;
+            };
+            seek(currentTime.get());
+            const unsubscribe = currentTime.on('change', seek);
+            return () => {
+                unsubscribe();
+                animation.cancel();
+            };
+        }
+
         return () => animation.cancel();
-    }, [enabled, ref, strength, reducedMotion]);
+    }, [enabled, ref, strength, reducedMotion, currentTime, deterministicMotion]);
 };
 
 const resolveSourceUrl = (
@@ -70,6 +89,8 @@ const MonetBackgroundLayer: React.FC<MonetBackgroundLayerProps> = ({
     tuning = DEFAULT_MONET_BACKGROUND_TUNING,
     transparentBackground = false,
     staticMode = false,
+    currentTime,
+    deterministicMotion = false,
 }) => {
     const [pipelineUrl, setPipelineUrl] = useState<string | null>(null);
     const sourceUrl = resolveSourceUrl(coverUrl, monetBackgroundImage, tuning);
@@ -128,7 +149,14 @@ const MonetBackgroundLayer: React.FC<MonetBackgroundLayerProps> = ({
     const driftStrength = clamp(tuning.backgroundDriftStrength ?? 0, 0, 1);
     const driftEnabled = Boolean(tuning.backgroundDriftEnabled) && !staticMode && driftStrength > 0;
     const reduceBackgroundMotion = useReducedMotionFor('monetBackground');
-    useMonetBackgroundDrift(driftRef, driftEnabled, driftStrength, reduceBackgroundMotion);
+    useMonetBackgroundDrift(
+        driftRef,
+        driftEnabled,
+        driftStrength,
+        deterministicMotion ? false : reduceBackgroundMotion,
+        currentTime,
+        deterministicMotion,
+    );
     // Only promote the layer while it actually moves; an idle drift wrapper stays a plain div.
     const driftStyle = useMemo<React.CSSProperties | undefined>(
         () => (driftEnabled ? { willChange: 'transform' } : undefined),
