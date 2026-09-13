@@ -52,7 +52,7 @@ module.exports = function activate(api) {
                 type: 'number',
                 min: 10,
                 max: 60,
-                defaultValue: 30,
+                defaultValue: 60,
             },
             {
                 key: 'startSec',
